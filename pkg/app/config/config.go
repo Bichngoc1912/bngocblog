@@ -4,6 +4,11 @@ const (
 	SERVER_NAME = "bngocblog"
 )
 
+type SessionServer struct {
+	Type 					string 			`json:"serverConfig"`
+	StorageServer RedisServer `json:"store"`
+}
+
 type RedisServer struct {
 	Host     string `json:"host"`
 	Port     int64  `json:"port"`
@@ -23,7 +28,8 @@ type HttpServerSetting struct {
 }
 
 type ServerSetting struct {
-	ServerName 				string `json:"name"`
+	ServerName 				string 						`json:"name"`
+	SessionServer			SessionServer 		`json:"session_service"`
 	DebugMode         bool              `json:"debug"`
 	ProductionEnv     bool              `json:"production"`
 	ServerURI         string            `json:"server_uri"`

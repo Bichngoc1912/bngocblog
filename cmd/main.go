@@ -5,9 +5,15 @@ import (
 	"log"
 	"os"
 
+	// "blog/pkg/app/config"
+	"blog/pkg/app/config"
 	blgutils "blog/utils"
 
+	"github.com/antigloss/go/logger"
 	"github.com/fasthttp/router"
+	"github.com/linuxpham/fasthttpsession"
+	"github.com/linuxpham/fasthttpsession/redis"
+	"github.com/pkg/errors"
 	"github.com/valyala/fasthttp"
 )
 
@@ -23,12 +29,25 @@ func initRouter() *router.Router{
 	return router
 }
 
-func main() {
-	appRouterInit := initRouter()
-	appHandleFunc := func(ctx *fasthttp.RequestCtx) {
-		appRouterInit.Handler(ctx)
+func initSession(sessionStore *fasthttpsession.Session, serverConfig *config.ServerSetting) error {
+	//init session store
+	err := sessionStore.SetProvider(serverConfig.SessionServer.Type, &redis.Config{
+		Host: serverConfig.SessionServer.StorageServer.Host,
+		Port: serverConfig.SessionServer.StorageServer.Port,
+		MaxIdle:     8,
+		IdleTimeout: 300,
+		Password:    serverConfig.SessionServer.StorageServer.Password,
+		KeyPrefix:   serverConfig.SessionServer.StorageServer.Prefix,
+	})
+
+	if err != nil {
+		return errors.Errorf(fmt.Sprintf("Session store [%v] with error: %v", serverConfig.SessionServer.Type, err.Error()))
 	}
 
+	return nil
+}
+
+func main() {
 	var rootPath string
 	rootPathDefault, err := os.Getwd()
 	if err != nil {
@@ -48,6 +67,26 @@ func main() {
 		return 
 	}
 	
+	var sessionConfig = fasthttpsession.NewDefaultConfig()
+	var sessionStore = fasthttpsession.NewSession(sessionConfig)
+
+	//init session
+	err = initSession(sessionStore, &serverConfig)
+	if err != nil {
+		if serverConfig.DebugMode {
+			log.Println(fmt.Sprintf("Session store [%v] with error: %v", serverConfig.SessionServer.Type, err.Error()))
+		} else {
+			logger.Error(err.Error())
+		}
+		os.Exit(1)
+	}
+
+	// init router
+	appRouterInit := initRouter()
+	appHandleFunc := func(ctx *fasthttp.RequestCtx) {
+		appRouterInit.Handler(ctx)
+	}
+
 	if err := fasthttp.ListenAndServe(serverConfig.HttpServerSetting.Addr, appHandleFunc); err != nil {
 		log.Fatal("err...", err)
 	}

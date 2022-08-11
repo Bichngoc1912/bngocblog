@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+## 11/08/2022
+
+- [feature] Setup session
+
 ## 10/08/2022
 
 - [feature] Viết hàm đọc file json tại `fileUtils.go`
